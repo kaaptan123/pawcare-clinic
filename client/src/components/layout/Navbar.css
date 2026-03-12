@@ -1,0 +1,9 @@
+/* Trust bar collapses when scrolled - handled by JS adding scrolled class */
+.navbar.scrolled { top: 0 !important; }
+
+/* Mobile adjustments */
+@media(max-width:820px) {
+  .page-top { padding-top: 90px; }
+  .nav-links { top: 90px; }
+  .nav-overlay { top: 90px; }
+}

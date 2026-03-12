@@ -1,0 +1,24 @@
+.footer { background:var(--deep); color:rgba(255,255,255,0.75); padding:64px 0 0; margin-top:80px; }
+.footer-grid { display:grid; grid-template-columns:1.4fr 1fr 1fr 1.2fr; gap:40px; padding-bottom:48px; border-bottom:1px solid rgba(255,255,255,0.1); }
+.footer-logo { font-family:'Playfair Display',serif; font-size:1.4rem; color:white; font-weight:700; margin-bottom:10px; }
+.footer-tagline { color:var(--saffron); font-size:0.85rem; font-weight:600; margin-bottom:10px; }
+.footer-bio { font-size:0.82rem; line-height:1.7; opacity:0.65; }
+.footer-social { display:flex; gap:10px; margin-top:16px; flex-wrap:wrap; }
+.footer-social a { width:36px; height:36px; border-radius:50%; border:1px solid rgba(255,255,255,0.2); display:flex; align-items:center; justify-content:center; font-size:0.95rem; transition:all 0.2s; }
+.footer-social a:hover { background:var(--saffron); border-color:var(--saffron); color:white; }
+.footer-social .wa-btn { width:auto; padding:0 14px; border-radius:30px; font-size:0.78rem; font-weight:700; color:white; background:#25D366; border-color:#25D366; }
+.footer-heading { font-weight:800; font-size:0.8rem; letter-spacing:0.1em; text-transform:uppercase; color:var(--gold); margin-bottom:18px; }
+.footer-links { list-style:none; display:flex; flex-direction:column; gap:8px; }
+.footer-links li a,.footer-links li span { font-size:0.85rem; opacity:0.65; transition:opacity 0.2s; cursor:pointer; }
+.footer-links li a:hover { opacity:1; color:var(--saffron); }
+.footer-contact { display:flex; flex-direction:column; gap:10px; }
+.footer-contact > div { display:flex; align-items:flex-start; gap:10px; font-size:0.83rem; }
+.fc-icon { color:var(--saffron); margin-top:2px; flex-shrink:0; }
+.footer-contact a { opacity:0.7; transition:opacity 0.2s; } .footer-contact a:hover { opacity:1; color:var(--gold); }
+.footer-hours { margin-top:18px; background:rgba(255,255,255,0.05); border-radius:12px; padding:14px; }
+.fh-label { font-size:0.7rem; font-weight:800; color:var(--gold); text-transform:uppercase; letter-spacing:0.07em; margin-bottom:4px; }
+.fh-val { font-size:0.83rem; opacity:0.7; }
+.fh-emergency { font-size:0.8rem; color:#FF6B6B; font-weight:700; margin-top:4px; }
+.footer-bottom { padding:20px 0; display:flex; justify-content:space-between; align-items:center; font-size:0.78rem; opacity:0.45; flex-wrap:wrap; gap:10px; }
+@media(max-width:900px) { .footer-grid { grid-template-columns:1fr 1fr; gap:32px; } }
+@media(max-width:560px) { .footer-grid { grid-template-columns:1fr; } }
