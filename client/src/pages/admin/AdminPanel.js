@@ -339,11 +339,13 @@ function Blog() {
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [imgFile, setImgFile] = useState(null);
+  const [imgFiles, setImgFiles] = useState([]);
   const [imgPrev, setImgPrev] = useState(null);
+  const [imgPrevs, setImgPrevs] = useState([]);
   const [form, setForm] = useState({title:'',excerpt:'',content:'',tags:'',published:false});
   const imgRef = useRef();
 
-  const load = () => api.get('/blogs?all=true').then(r=>setBlogs(r.data));
+  const load = () => api.get('/blogs/all').then(r=>setBlogs(r.data));
   useEffect(()=>{load();},[]);
   const openAdd = () => { setForm({title:'',excerpt:'',content:'',tags:'',published:false}); setEditing(null); setImgFile(null); setImgPrev(null); setModal(true); };
   const openEdit = (b) => { setForm({...b,tags:b.tags?.join(',')||''}); setEditing(b._id); setImgFile(null); setImgPrev(imgUrl(b.image)); setModal(true); };
@@ -353,7 +355,9 @@ function Blog() {
     const fd = new FormData();
     const data = { ...form, tags: form.tags.split(',').map(t=>t.trim()).filter(Boolean) };
     Object.entries(data).forEach(([k,v]) => typeof v === 'object' ? fd.append(k, JSON.stringify(v)) : fd.append(k, v));
-    if (imgFile) fd.append('image', imgFile);
+    // Support multiple images for blog
+    if (imgFile) fd.append('images', imgFile);
+    if (imgFiles && imgFiles.length > 0) imgFiles.forEach(f => fd.append('images', f));
     try {
       if (editing) await api.put(`/blogs/${editing}`, fd, {headers:{'Content-Type':'multipart/form-data'}});
       else await api.post('/blogs', fd, {headers:{'Content-Type':'multipart/form-data'}});
@@ -386,8 +390,18 @@ function Blog() {
             <div className="adm-modal-hdr"><h2>{editing?'Edit':'New'} Blog Post</h2><button onClick={()=>setModal(false)}><FiX/></button></div>
             <form onSubmit={save} className="adm-modal-body">
               <div className="img-upload-box" onClick={()=>imgRef.current.click()} style={{height:160}}>
-                {imgPrev ? <img src={imgPrev} alt="preview"/> : <div className="iub-placeholder"><FiUpload/><span>Cover image upload करें</span></div>}
-                <input ref={imgRef} type="file" accept="image/*" onChange={e=>{const f=e.target.files[0];if(f){setImgFile(f);setImgPrev(URL.createObjectURL(f));}}} style={{display:'none'}}/>
+                {imgPrev ? <img src={imgPrev} alt="preview"/> : <div className="iub-placeholder"><FiUpload/><span>Cover image upload करें (multiple select करें)</span></div>
+                {imgPrevs.length > 1 && (
+                  <div style={{display:'flex',gap:6,flexWrap:'wrap',padding:'8px 10px',background:'var(--bg3)',borderTop:'1px solid var(--border)'}}>
+                    {imgPrevs.map((p,i) => (
+                      <div key={i} style={{width:48,height:36,borderRadius:5,overflow:'hidden',border:i===0?'2px solid var(--forest2)':'1px solid var(--border)'}}>
+                        <img src={p} alt={''} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                      </div>
+                    ))}
+                    <div style={{fontSize:'.72rem',color:'var(--text3)',alignSelf:'center',fontWeight:600}}>{imgPrevs.length} images selected</div>
+                  </div>
+                )}}
+                <input ref={imgRef} type="file" accept="image/*" multiple onChange={e=>{const files=Array.from(e.target.files);if(files.length>0){setImgFile(files[0]);setImgFiles(files);setImgPrev(URL.createObjectURL(files[0]));setImgPrevs(files.map(f=>URL.createObjectURL(f)));}}} style={{display:'none'}}/>
               </div>
               <div className="form-group"><label>Title *</label><input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} required/></div>
               <div className="form-group"><label>Excerpt (Short Description)</label><textarea value={form.excerpt} onChange={e=>setForm(f=>({...f,excerpt:e.target.value}))} rows={2}/></div>
@@ -414,7 +428,7 @@ function Videos() {
   const [modal, setModal] = useState(false);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({title:'',description:'',youtubeUrl:'',category:'general',published:true});
-  const load = () => api.get('/videos?all=true').then(r=>setVideos(r.data));
+  const load = () => api.get('/videos/all').then(r=>setVideos(r.data));
   useEffect(()=>{load();},[]);
   const save = async (e) => {
     e.preventDefault();
@@ -484,14 +498,25 @@ function Settings() {
   const save = async () => {
     setSaving(true);
     try {
-      if (doctorImgFile) {
-        const fd = new FormData(); fd.append('file', doctorImgFile); fd.append('key','doctor_photo');
-        const r = await api.post('/settings/upload', fd, {headers:{'Content-Type':'multipart/form-data'}});
-        setSettings(s=>({...s,doctor_photo:r.data.url}));
+      // Use single multipart request — handles photo + all settings together
+      const fd = new FormData();
+      if (doctorImgFile) fd.append('doctor_photo', doctorImgFile);
+      Object.entries(settings).forEach(([k,v]) => {
+        if (v !== null && v !== undefined && k !== 'doctor_photo') fd.append(k, v);
+      });
+      const r = await api.put('/settings', fd, { headers:{'Content-Type':'multipart/form-data'} });
+      // Cache-bust the doctor photo so it loads fresh immediately
+      if (r.data.doctor_photo) {
+        const freshUrl = imgUrl(r.data.doctor_photo, true); // bust=true adds timestamp
+        setDoctorImgPrev(freshUrl);
+        setSettings(s => ({...s, doctor_photo: r.data.doctor_photo}));
       }
-      await api.put('/settings', settings);
+      setDoctorImgFile(null);
       toast.success('Settings saved! ✅');
-    } catch { toast.error('Error saving'); }
+      // Reload settings to sync across site
+      const fresh = await api.get('/settings');
+      setSettings(fresh.data);
+    } catch(e) { toast.error('Error saving: ' + (e.response?.data?.message || e.message)); }
     setSaving(false);
   };
 

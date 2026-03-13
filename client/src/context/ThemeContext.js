@@ -1,23 +1,40 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import api from '../utils/api';
 
-// ── THEME ─────────────────────────────────────────────────────
-const ThemeContext = createContext();
+const ThemeCtx    = createContext();
+const SettingsCtx = createContext();
+
+export function useTheme()    { return useContext(ThemeCtx); }
+export function useSettings() { return useContext(SettingsCtx); }
+
 export function ThemeProvider({ children }) {
-  const [dark, setDark] = useState(() => localStorage.getItem('pawcare_theme') === 'dark');
+  const [dark, setDark] = useState(() => localStorage.getItem('dg24_theme') === 'dark');
+  const toggle = () => setDark(d => {
+    const next = !d;
+    localStorage.setItem('dg24_theme', next ? 'dark' : 'light');
+    return next;
+  });
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
-    localStorage.setItem('pawcare_theme', dark ? 'dark' : 'light');
   }, [dark]);
-  return <ThemeContext.Provider value={{ dark, toggle: () => setDark(d => !d) }}>{children}</ThemeContext.Provider>;
+  return <ThemeCtx.Provider value={{ dark, toggle }}>{children}</ThemeCtx.Provider>;
 }
-export const useTheme = () => useContext(ThemeContext);
 
-// ── SETTINGS ──────────────────────────────────────────────────
-const SettingsContext = createContext({});
 export function SettingsProvider({ children }) {
   const [settings, setSettings] = useState({});
-  useEffect(() => { api.get('/settings').then(r => setSettings(r.data)).catch(() => {}); }, []);
-  return <SettingsContext.Provider value={settings}>{children}</SettingsContext.Provider>;
+  const [loaded, setLoaded] = useState(false);
+
+  const load = useCallback(() => {
+    api.get('/settings')
+      .then(r => { setSettings(r.data); setLoaded(true); })
+      .catch(() => setLoaded(true));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  // Refresh settings (called after admin saves)
+  const refresh = useCallback(() => { load(); }, [load]);
+
+  const value = { ...settings, _loaded: loaded, _refresh: refresh };
+  return <SettingsCtx.Provider value={value}>{children}</SettingsCtx.Provider>;
 }
-export const useSettings = () => useContext(SettingsContext);

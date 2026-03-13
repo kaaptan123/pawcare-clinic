@@ -1,47 +1,93 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useEffect, useState, useCallback } from 'react';
 import api from '../utils/api';
 
-// ── AUTH ──────────────────────────────────────────────────────
-const AuthContext = createContext();
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
-  useEffect(() => {
-    const u = localStorage.getItem('pawcare_user');
-    const t = localStorage.getItem('pawcare_token');
-    if (u && t) setUser(JSON.parse(u));
-    setLoading(false);
-  }, []);
-  const login = async (email, password) => {
-    const { data } = await api.post('/auth/login', { email, password });
-    localStorage.setItem('pawcare_token', data.token);
-    localStorage.setItem('pawcare_user', JSON.stringify(data.user));
-    setUser(data.user); return data.user;
-  };
-  const register = async (form) => {
-    const { data } = await api.post('/auth/register', form);
-    localStorage.setItem('pawcare_token', data.token);
-    localStorage.setItem('pawcare_user', JSON.stringify(data.user));
-    setUser(data.user); return data.user;
-  };
-  const logout = () => { localStorage.removeItem('pawcare_token'); localStorage.removeItem('pawcare_user'); setUser(null); };
-  return <AuthContext.Provider value={{ user, loading, login, register, logout, isAdmin: user?.role === 'admin', isPatient: user?.role === 'patient' }}>{children}</AuthContext.Provider>;
-}
-export const useAuth = () => useContext(AuthContext);
+// ── AUTH ─────────────────────────────────────────────────────
+const AuthCtx = createContext();
+export const useAuth = () => useContext(AuthCtx);
 
-// ── CART ──────────────────────────────────────────────────────
-const CartContext = createContext();
-export function CartProvider({ children }) {
-  const [items, setItems] = useState([]);
-  const addItem = (p) => setItems(prev => { const ex = prev.find(i => i._id === p._id); return ex ? prev.map(i => i._id === p._id ? { ...i, qty: i.qty+1 } : i) : [...prev, { ...p, qty:1 }]; });
-  const removeItem = (id) => setItems(prev => prev.filter(i => i._id !== id));
-  const updateQty = (id, qty) => { if (qty <= 0) return removeItem(id); setItems(prev => prev.map(i => i._id === id ? { ...i, qty } : i)); };
-  const clearCart = () => setItems([]);
-  const subtotal = items.reduce((a,i) => a + i.price * i.qty, 0);
-  const gst = Math.round(subtotal * 0.05);
-  const delivery = 50;
-  const total = subtotal + gst + delivery;
-  const totalItems = items.reduce((a,i) => a + i.qty, 0);
-  return <CartContext.Provider value={{ items, addItem, removeItem, updateQty, clearCart, subtotal, gst, delivery, total, totalItems }}>{children}</CartContext.Provider>;
+export function AuthProvider({ children }) {
+  const [user, setUser]       = useState(() => JSON.parse(localStorage.getItem('doctorg24_user') || 'null'));
+  const [loading, setLoading] = useState(false);
+
+  const login = useCallback(async (email, password) => {
+    const r = await api.post('/auth/login', { email, password });
+    localStorage.setItem('doctorg24_token', r.data.token);
+    localStorage.setItem('doctorg24_user', JSON.stringify(r.data.user));
+    setUser(r.data.user);
+    return r.data.user;
+  }, []);
+
+  const register = useCallback(async (data) => {
+    const r = await api.post('/auth/register', data);
+    localStorage.setItem('doctorg24_token', r.data.token);
+    localStorage.setItem('doctorg24_user', JSON.stringify(r.data.user));
+    setUser(r.data.user);
+    return r.data.user;
+  }, []);
+
+  const logout = useCallback(() => {
+    localStorage.removeItem('doctorg24_token');
+    localStorage.removeItem('doctorg24_user');
+    setUser(null);
+  }, []);
+
+  // Call this after profile update to sync user in state + localStorage
+  const updateUser = useCallback((updated) => {
+    const merged = { ...user, ...updated };
+    localStorage.setItem('doctorg24_user', JSON.stringify(merged));
+    setUser(merged);
+  }, [user]);
+
+  const isAdmin = user?.role === 'admin';
+
+  return (
+    <AuthCtx.Provider value={{ user, loading, login, register, logout, updateUser, isAdmin }}>
+      {children}
+    </AuthCtx.Provider>
+  );
 }
-export const useCart = () => useContext(CartContext);
+
+// ── CART ─────────────────────────────────────────────────────
+const CartCtx = createContext();
+export const useCart = () => useContext(CartCtx);
+
+export function CartProvider({ children }) {
+  const [items, setItems] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('dg24_cart') || '[]'); } catch{ return []; }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('dg24_cart', JSON.stringify(items));
+  }, [items]);
+
+  const addItem = useCallback((product, qty = 1) => {
+    setItems(prev => {
+      const existing = prev.find(i => i._id === product._id);
+      if (existing) return prev.map(i => i._id === product._id ? { ...i, qty: i.qty + qty } : i);
+      return [...prev, { ...product, qty }];
+    });
+  }, []);
+
+  const removeItem = useCallback((id) => {
+    setItems(prev => prev.filter(i => i._id !== id));
+  }, []);
+
+  const updateQty = useCallback((id, qty) => {
+    if (qty < 1) { setItems(prev => prev.filter(i => i._id !== id)); return; }
+    setItems(prev => prev.map(i => i._id === id ? { ...i, qty } : i));
+  }, []);
+
+  const clearCart = useCallback(() => setItems([]), []);
+
+  const totalItems = items.reduce((s, i) => s + i.qty, 0);
+  const subtotal   = items.reduce((s, i) => s + i.price * i.qty, 0);
+  const delivery   = subtotal > 0 ? 50 : 0;
+  const gst        = Math.round(subtotal * 0.05);
+  const total      = subtotal + delivery + gst;
+
+  return (
+    <CartCtx.Provider value={{ items, addItem, removeItem, updateQty, clearCart, totalItems, subtotal, delivery, gst, total }}>
+      {children}
+    </CartCtx.Provider>
+  );
+}

@@ -4,12 +4,13 @@ import Navbar from '../components/layout/Navbar';
 import Footer from '../components/layout/Footer';
 import { useAuth } from '../context/AppContext';
 import toast from 'react-hot-toast';
-import { FiMail, FiLock, FiLogIn } from 'react-icons/fi';
+import { FiMail, FiLock, FiLogIn, FiEye, FiEyeOff } from 'react-icons/fi';
 
 export default function Login() {
   const { login } = useAuth();
   const nav = useNavigate();
   const [form, setForm] = useState({ email:'', password:'' });
+  const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const submit = async (e) => {
@@ -19,7 +20,9 @@ export default function Login() {
       const user = await login(form.email, form.password);
       toast.success(`Welcome back, ${user.name.split(' ')[0]}! 🐾`);
       nav(user.role === 'admin' ? '/admin' : '/patient/dashboard');
-    } catch(err) { toast.error(err.response?.data?.message || 'Invalid credentials'); }
+    } catch(err) {
+      toast.error(err.response?.data?.message || 'Invalid email or password');
+    }
     setLoading(false);
   };
 
@@ -33,9 +36,33 @@ export default function Login() {
           <p style={{color:'var(--text3)',fontSize:'.85rem'}}>Login to manage your appointments & orders</p>
         </div>
         <form onSubmit={submit}>
-          <div className="form-group"><label><FiMail size={11}/> Email Address</label><input type="email" value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))} placeholder="your@email.com" required autoFocus/></div>
-          <div className="form-group"><label><FiLock size={11}/> Password</label><input type="password" value={form.password} onChange={e=>setForm(f=>({...f,password:e.target.value}))} placeholder="••••••••" required/></div>
-          <button type="submit" className="btn btn-primary btn-full" style={{marginTop:6}} disabled={loading}>
+          <div className="form-group">
+            <label><FiMail size={11}/> Email Address</label>
+            <input type="email" value={form.email} onChange={e=>setForm(f=>({...f,email:e.target.value}))}
+              placeholder="your@email.com" required autoFocus/>
+          </div>
+          <div className="form-group">
+            <label><FiLock size={11}/> Password</label>
+            <div style={{position:'relative'}}>
+              <input
+                type={showPw ? 'text' : 'password'}
+                value={form.password}
+                onChange={e=>setForm(f=>({...f,password:e.target.value}))}
+                placeholder="••••••••"
+                required
+                style={{paddingRight:44}}/>
+              <button type="button" onClick={()=>setShowPw(s=>!s)}
+                style={{position:'absolute',right:12,top:'50%',transform:'translateY(-50%)',background:'none',border:'none',cursor:'pointer',color:'var(--text3)',display:'flex',alignItems:'center'}}>
+                {showPw ? <FiEyeOff size={16}/> : <FiEye size={16}/>}
+              </button>
+            </div>
+          </div>
+          <div style={{textAlign:'right',marginBottom:16,marginTop:-10}}>
+            <Link to="/forgot-password" style={{fontSize:'.78rem',color:'var(--forest2)',fontWeight:600}}>
+              Forgot Password?
+            </Link>
+          </div>
+          <button type="submit" className="btn btn-primary btn-full" disabled={loading}>
             <FiLogIn size={15}/>{loading ? 'Logging in...' : 'Login'}
           </button>
         </form>
