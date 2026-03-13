@@ -390,7 +390,7 @@ function Blog() {
             <div className="adm-modal-hdr"><h2>{editing?'Edit':'New'} Blog Post</h2><button onClick={()=>setModal(false)}><FiX/></button></div>
             <form onSubmit={save} className="adm-modal-body">
               <div className="img-upload-box" onClick={()=>imgRef.current.click()} style={{height:160}}>
-                {imgPrev ? <img src={imgPrev} alt="preview"/> : <div className="iub-placeholder"><FiUpload/><span>Cover image upload करें (multiple select करें)</span></div>
+                {imgPrev ? <img src={imgPrev} alt="preview"/> : <div className="iub-placeholder"><FiUpload/><span>Cover image upload करें (multiple select करें)</span></div>}
                 {imgPrevs.length > 1 && (
                   <div style={{display:'flex',gap:6,flexWrap:'wrap',padding:'8px 10px',background:'var(--bg3)',borderTop:'1px solid var(--border)'}}>
                     {imgPrevs.map((p,i) => (
@@ -400,7 +400,7 @@ function Blog() {
                     ))}
                     <div style={{fontSize:'.72rem',color:'var(--text3)',alignSelf:'center',fontWeight:600}}>{imgPrevs.length} images selected</div>
                   </div>
-                )}}
+                )}
                 <input ref={imgRef} type="file" accept="image/*" multiple onChange={e=>{const files=Array.from(e.target.files);if(files.length>0){setImgFile(files[0]);setImgFiles(files);setImgPrev(URL.createObjectURL(files[0]));setImgPrevs(files.map(f=>URL.createObjectURL(f)));}}} style={{display:'none'}}/>
               </div>
               <div className="form-group"><label>Title *</label><input value={form.title} onChange={e=>setForm(f=>({...f,title:e.target.value}))} required/></div>
