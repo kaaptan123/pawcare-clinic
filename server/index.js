@@ -19,6 +19,20 @@ app.use('/api', require('./routes'));
 app.get('/api/health', (req, res) => res.json({ status: 'ok', message: 'DoctorG24 API is running', version: '2.0' }));
 app.get('/', (req, res) => res.json({ message: 'DoctorG24 API v2.0 🐾' }));
 
+// ── KEEP-ALIVE PING (prevents Render free tier cold starts) ───
+// Pings itself every 14 minutes so server stays warm
+const SELF_URL = process.env.RENDER_EXTERNAL_URL || `http://localhost:${process.env.PORT || 5000}`;
+setInterval(async () => {
+  try {
+    const http = require('http');
+    const https = require('https');
+    const client = SELF_URL.startsWith('https') ? https : http;
+    client.get(`${SELF_URL}/api/health`, (r) => {
+      console.log(`🏓 Keep-alive ping: ${r.statusCode}`);
+    }).on('error', () => {});
+  } catch(e) {}
+}, 14 * 60 * 1000); // every 14 minutes
+
 const PORT = process.env.PORT || 5000;
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/doctorg24';
 

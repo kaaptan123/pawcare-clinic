@@ -109,6 +109,32 @@ router.put('/auth/profile', protect, async (req, res) => {
 // Health check
 router.get('/health', (req, res) => res.json({ status: 'ok', message: 'DoctorG24 API running', time: new Date() }));
 
+// ── DASHBOARD STATS ───────────────────────────────────────────
+router.get('/dashboard/stats', protect, adminOnly, async (req, res) => {
+  try {
+    const [patients, appointments, orders, products, reviews, blogs] = await Promise.all([
+      Patient.countDocuments(),
+      Appointment.countDocuments(),
+      Order.countDocuments(),
+      Product.countDocuments(),
+      Review.countDocuments({ approved: true }),
+      Blog.countDocuments({ published: true }),
+    ]);
+    const pendingAppts    = await Appointment.countDocuments({ status: 'pending' });
+    const todayStart      = new Date(); todayStart.setHours(0,0,0,0);
+    const todayAppts      = await Appointment.countDocuments({ createdAt: { $gte: todayStart } });
+    const recentOrders    = await Order.find().sort({ createdAt: -1 }).limit(5).lean();
+    const recentAppts     = await Appointment.find().sort({ createdAt: -1 }).limit(5).lean();
+    const totalRevenue    = await Order.aggregate([{ $group: { _id: null, total: { $sum: '$total' } } }]);
+    res.json({
+      patients, appointments, orders, products, reviews, blogs,
+      pendingAppts, todayAppts,
+      totalRevenue: totalRevenue[0]?.total || 0,
+      recentOrders, recentAppts,
+    });
+  } catch(e) { res.status(500).json({ message: e.message }); }
+});
+
 // ══════════════════════════════════════════════════════════════
 //  PRODUCTS
 // ══════════════════════════════════════════════════════════════
